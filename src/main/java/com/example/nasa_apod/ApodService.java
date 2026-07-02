@@ -42,10 +42,36 @@ public class ApodService implements CommandLineRunner {
 
     public void fetchApodAndSave() {
         logger.info("Fetching APOD from NASA API...");
-        try {
-            String urlStr = "https://api.nasa.gov/planetary/apod?api_key=" + apiKey;
-            ApodResponse response = restTemplate.getForObject(urlStr, ApodResponse.class);
+        
+        ApodResponse response = null;
+        int maxRetries = 5;
+        
+        for (int i = 1; i <= maxRetries; i++) {
+            try {
+                String urlStr = "https://api.nasa.gov/planetary/apod?api_key=" + apiKey;
+                response = restTemplate.getForObject(urlStr, ApodResponse.class);
+                break; // success
+            } catch (RestClientException e) {
+                logger.warning("Attempt " + i + " failed to fetch APOD: " + e.getMessage());
+                if (i == maxRetries) {
+                    logger.severe("All " + maxRetries + " attempts failed. NASA API is currently unavailable.");
+                    return;
+                }
+                try {
+                    long delay = 5000L * (long) Math.pow(2, i - 1);
+                    logger.info("Waiting " + (delay / 1000) + " seconds before next attempt...");
+                    Thread.sleep(delay);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+            } catch (Exception e) {
+                logger.severe("Unexpected error fetching APOD: " + e.getMessage());
+                return;
+            }
+        }
 
+        try {
             if (response != null && "image".equals(response.getMedia_type())) {
                 String imageUrl = response.getHdurl() != null ? response.getHdurl() : response.getUrl();
                 logger.info("APOD is an image. URL: " + imageUrl);
@@ -83,10 +109,11 @@ public class ApodService implements CommandLineRunner {
                             "-gravity", "North",
                             "-crop", "16:9",
                             "+repage",
+                            "-resize", "1920x1080!",
                             "-gravity", "NorthWest",
                             "-fill", "rgba(255,255,255,0.4)",
-                            "-pointsize", "64",
-                            "-annotate", "+75+75", response.getTitle(),
+                            "-pointsize", "32",
+                            "-annotate", "+50+50", response.getTitle(),
                             wallpaperPath.toAbsolutePath().toString()
                     );
                     pb.redirectErrorStream(true);
@@ -115,11 +142,8 @@ public class ApodService implements CommandLineRunner {
             } else {
                 logger.info("Today's APOD is not an image (maybe a video). Skipping download.");
             }
-        } catch (RestClientException e) {
-            logger.warning("NASA API is currently unavailable or returned an error: " + e.getMessage());
-            logger.warning("Please try running the command again later.");
         } catch (Exception e) {
-            logger.severe("Unexpected error fetching APOD: " + e.getMessage());
+            logger.severe("Unexpected error processing APOD: " + e.getMessage());
         }
     }
 
