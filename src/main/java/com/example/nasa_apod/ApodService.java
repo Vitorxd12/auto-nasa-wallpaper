@@ -106,11 +106,11 @@ public class ApodService implements CommandLineRunner {
                     ProcessBuilder pb = new ProcessBuilder(
                             "convert",
                             filePath.toAbsolutePath().toString(),
-                            "-gravity", "North",
+                            "-gravity", "Center",
                             "-crop", "16:9",
                             "+repage",
                             "-resize", "1920x1080!",
-                            "-gravity", "NorthWest",
+                            "-gravity", "SouthEast",
                             "-fill", "rgba(255,255,255,0.4)",
                             "-pointsize", "32",
                             "-annotate", "+50+50", response.getTitle(),
