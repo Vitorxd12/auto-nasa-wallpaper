@@ -233,11 +233,18 @@ public class ApodService implements CommandLineRunner {
         try {
             logger.info("Setting Ubuntu wallpaper...");
             String fileUri = "file://" + absoluteFilePath;
-            
+
+            // gsettings only notifies gnome-shell when a key's value actually changes,
+            // so re-setting the same URI (e.g. running twice on the same day) silently
+            // no-ops and the desktop keeps showing the stale image. Clearing picture-uri
+            // first forces gnome-shell to always pick up the new/updated file.
+            new ProcessBuilder("gsettings", "set", "org.gnome.desktop.background", "picture-uri", "").start().waitFor();
+            new ProcessBuilder("gsettings", "set", "org.gnome.desktop.background", "picture-uri-dark", "").start().waitFor();
+
             // Set for light theme
             ProcessBuilder pbLight = new ProcessBuilder("gsettings", "set", "org.gnome.desktop.background", "picture-uri", fileUri);
             pbLight.start().waitFor();
-            
+
             // Set for dark theme
             ProcessBuilder pbDark = new ProcessBuilder("gsettings", "set", "org.gnome.desktop.background", "picture-uri-dark", fileUri);
             pbDark.start().waitFor();
